@@ -85,4 +85,9 @@ public class NotificationBuilderApi11 extends NotificationBuilder {
     public Notification getNotification() {
         return mBuilder.getNotification();
     }
+
+    @Override
+    public void addAction(int icon, CharSequence title, PendingIntent intent) {
+        mBuilder.addAction(icon, title, intent);
+    }
 }

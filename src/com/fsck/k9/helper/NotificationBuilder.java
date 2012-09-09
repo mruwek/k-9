@@ -161,4 +161,6 @@ public abstract class NotificationBuilder {
      * @return A new {@code Notification} object configured by this {@link NotificationBuilder}.
      */
     public abstract Notification getNotification();
+
+    public abstract void addAction(int icon, CharSequence title, PendingIntent intent);
 }

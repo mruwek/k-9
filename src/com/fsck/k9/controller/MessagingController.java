@@ -4218,6 +4218,7 @@ public class MessagingController implements Runnable {
                 message.getFolder().getName());
         PendingIntent pi = PendingIntent.getActivity(context, 0, i, 0);
         builder.setContentIntent(pi);
+        builder.addAction(R.drawable.ic_action_toggle_read_dark, "Mark read", pi);
 
         // Only ring or vibrate if we have not done so already on this account and fetch
         boolean ringAndVibrate = false;
