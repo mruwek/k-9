@@ -97,6 +97,8 @@ public abstract class NotificationBuilder {
      */
     public abstract void setContentIntent(PendingIntent intent);
 
+    public abstract void setContentInfo(CharSequence info);
+
     /**
      * Set the large number at the right-hand side of the notification.
      *
@@ -132,6 +134,10 @@ public abstract class NotificationBuilder {
      *         The URI of the sound to play.
      */
     public abstract void setSound(Uri sound);
+
+    public abstract void setStyle(Notification.Style style);
+
+    public abstract void setSubText(CharSequence text);
 
     /**
      * Set the vibration pattern to use.

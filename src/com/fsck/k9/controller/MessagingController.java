@@ -16,6 +16,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import android.app.Application;
 import android.app.KeyguardManager;
+import android.app.Notification;
+import android.app.Notification.Builder;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
@@ -31,6 +33,7 @@ import com.fsck.k9.Account;
 import com.fsck.k9.AccountStats;
 import com.fsck.k9.K9;
 import com.fsck.k9.K9.NotificationHideSubject;
+import com.fsck.k9.helper.NotificationBuilder;
 import com.fsck.k9.NotificationSetting;
 import com.fsck.k9.Preferences;
 import com.fsck.k9.R;
@@ -38,7 +41,6 @@ import com.fsck.k9.SearchSpecification;
 import com.fsck.k9.K9.Intents;
 import com.fsck.k9.activity.FolderList;
 import com.fsck.k9.activity.MessageList;
-import com.fsck.k9.helper.NotificationBuilder;
 import com.fsck.k9.helper.Utility;
 import com.fsck.k9.helper.power.TracingPowerManager;
 import com.fsck.k9.helper.power.TracingPowerManager.TracingWakeLock;
@@ -4207,6 +4209,14 @@ public class MessagingController implements Runnable {
             builder.setNumber(unreadCount);
         }
 
+        if (unreadCount > 1) {
+            Notification.Style style = new Notification.InboxStyle();
+            builder.setStyle(style);
+        }
+        else {
+            Notification.Style style = new Notification.BigTextStyle();
+            builder.setStyle(style);
+        }
         String accountDescr = (account.getDescription() != null) ?
                 account.getDescription() : account.getEmail();
         String accountNotice = context.getString(R.string.notification_new_one_account_fmt,
@@ -4219,6 +4229,9 @@ public class MessagingController implements Runnable {
         PendingIntent pi = PendingIntent.getActivity(context, 0, i, 0);
         builder.setContentIntent(pi);
         builder.addAction(R.drawable.ic_action_toggle_read_dark, "Mark read", pi);
+
+        builder.setSubText(accountDescr);
+        builder.setContentInfo(unreadCount);
 
         // Only ring or vibrate if we have not done so already on this account and fetch
         boolean ringAndVibrate = false;

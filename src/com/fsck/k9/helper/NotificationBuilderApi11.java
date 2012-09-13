@@ -51,6 +51,11 @@ public class NotificationBuilderApi11 extends NotificationBuilder {
     }
 
     @Override
+    public void setContentInfo(CharSequence info) {
+        mBuilder.setContentInfo(info);
+    }
+
+    @Override
     public void setNumber(int number) {
         mBuilder.setNumber(number);
         mBuilder.setContentInfo("" + number);
@@ -70,6 +75,17 @@ public class NotificationBuilderApi11 extends NotificationBuilder {
     public void setSound(Uri sound) {
         mBuilder.setSound(sound, AudioManager.STREAM_NOTIFICATION);
     }
+
+    @Override
+    public void setStyle(Notification.Style style) {
+        mBuilder.setStyle(style);
+    }
+
+    @Override
+    public void setSubText(CharSequence text) {
+        mBuilder.setSubText(text);
+    }
+
 
     @Override
     public void setVibrate(long[] pattern) {
