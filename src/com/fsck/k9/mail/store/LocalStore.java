@@ -2868,66 +2868,69 @@ public class LocalStore extends Store implements Serializable {
             });
         }
 
-        /**
-         * Get information about the latest 5 unread messages in this folder.
-         *
-         * @return A list of {@link NotificationInfoHolder} instances containing information about
-         *         the latest unread messages. The list will contain at most 5 entries but can also
-         *         be empty.<br/>
-         *         {@code null}, in case of an error (other than the underlying storage not being
-         *         available).
-         *
-         * @throws UnavailableStorageException
-         *          If the underlying storage is unavailable.
-         */
-        public List<NotificationInfoHolder> getLatestUnreadMessages()
-                throws UnavailableStorageException {
-            return database.execute(false, new DbCallback<List<NotificationInfoHolder>>() {
-                @Override
-                public List<NotificationInfoHolder> doDbWork(final SQLiteDatabase db) {
-                    Cursor cursor = null;
-                    try {
-                        List<NotificationInfoHolder> holders =
-                                new ArrayList<NotificationInfoHolder>(5);
+    }
 
-                        open(OpenMode.READ_ONLY);
-                        cursor = db.rawQuery(
-                                "SELECT " + NOTIFICATION_HOLDER_COLUMNS +
-                                "FROM messages " +
-                                "WHERE folder_id=? AND flags NOT LIKE ? AND " +
-                                // Only return at least partially downloaded messages
-                                "(flags LIKE ? OR flags LIKE ?)" +
-                                "ORDER BY date DESC " +
-                                "LIMIT 5",
-                                new String[] {
-                                        Long.toString(mFolderId),
-                                        "%" + Flag.SEEN.toString() + "%",
-                                        "%" + Flag.X_DOWNLOADED_PARTIAL.toString() + "%",
-                                        "%" + Flag.X_DOWNLOADED_FULL.toString() + "%"
-                                });
+    /**
+        * Get information about the latest 5 unread messages in this folder.
+        *
+        * @return A list of {@link NotificationInfoHolder} instances containing information about
+        *         the latest unread messages. The list will contain at most 5 entries but can also
+        *         be empty.<br/>
+        *         {@code null}, in case of an error (other than the underlying storage not being
+        *         available).
+        *
+        * @throws UnavailableStorageException
+        *          If the underlying storage is unavailable.
+        */
+    public List<NotificationInfoHolder> getLatestUnreadMessages()
+            throws UnavailableStorageException {
+        return database.execute(false, new DbCallback<List<NotificationInfoHolder>>() {
+            @Override
+            public List<NotificationInfoHolder> doDbWork(final SQLiteDatabase db) {
+                Cursor cursor = null;
+                try {
+                    List<NotificationInfoHolder> holders =
+                            new ArrayList<NotificationInfoHolder>(5);
 
-                        while (cursor.moveToNext()) {
-                            Address[] senderList = Address.unpack(cursor.getString(0));
-                            String sender = (senderList.length > 0) ?
-                                    senderList[0].toFriendly().toString() : null;
-                            String subject = cursor.getString(1);
-                            Address[] recipients = Address.unpack(cursor.getString(2));
+                    LocalFolder trashFolder = getFolder(mAccount.getTrashFolderName());
+                    trashFolder.open(LocalFolder.OpenMode.READ_ONLY);
 
-                            NotificationInfoHolder holder =
-                                    new NotificationInfoHolder(sender, subject, recipients);
-                            holders.add(holder);
-                        }
+                    cursor = db.rawQuery(
+                            "SELECT " + NOTIFICATION_HOLDER_COLUMNS +
+                            "FROM messages " +
+                            "WHERE folder_id NOT IN (?) AND flags NOT LIKE ? AND " +
+                            // Only return at least partially downloaded messages
+                            "(flags LIKE ? OR flags LIKE ?)" +
+                            "ORDER BY date DESC " +
+                            "LIMIT 5",
+                            new String[] {
+                                    Long.toString(trashFolder.getId()),
+                                    "%" + Flag.SEEN.toString() + "%",
+                                    "%" + Flag.X_DOWNLOADED_PARTIAL.toString() + "%",
+                                    "%" + Flag.X_DOWNLOADED_FULL.toString() + "%"
+                            });
 
-                        return holders;
-                    } catch (Exception e) {
-                        Log.e(K9.LOG_TAG, "Unable to fetch latest unread messages", e);
-                    } finally {
-                        Utility.closeQuietly(cursor);
+                    while (cursor.moveToNext()) {
+                        Address[] senderList = Address.unpack(cursor.getString(0));
+                        String sender = (senderList.length > 0) ?
+                                senderList[0].toFriendly().toString() : null;
+                        String subject = cursor.getString(1);
+                        Address[] recipients = Address.unpack(cursor.getString(2));
+
+                        NotificationInfoHolder holder =
+                                new NotificationInfoHolder(sender, subject, recipients);
+                        holders.add(holder);
                     }
-                    return null;
+
+                    return holders;
+                } catch (Exception e) {
+                    Log.e(K9.LOG_TAG, "Unable to fetch latest unread messages", e);
+                } finally {
+                    Utility.closeQuietly(cursor);
                 }
-            });
-        }
+                return null;
+            }
+        });
     }
 
     /**

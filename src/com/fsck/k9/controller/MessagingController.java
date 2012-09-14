@@ -16,6 +16,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import android.app.Application;
 import android.app.KeyguardManager;
+import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
@@ -198,6 +199,11 @@ public class MessagingController implements Runnable {
 
         return false;
     }
+
+    private static boolean isRunningJellybeanOrLater() {
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN;
+    }
+
 
     /**
      * @param application  {@link K9}
@@ -4151,13 +4157,13 @@ public class MessagingController implements Runnable {
         List<NotificationInfoHolder> unreadMessages = null;
         try {
             String folderName = message.getFolder().getName();
-            LocalFolder folder = account.getLocalStore().getFolder(folderName);
-            unreadMessages = folder.getLatestUnreadMessages();
+            unreadMessages = account.getLocalStore().getLatestUnreadMessages();
         } catch (MessagingException e) {
             Log.e(K9.LOG_TAG, "Couldn't get latest unread messages", e);
         }
 
         // TODO: Change the code below to use 'unreadMessages'
+        final int unreadCount = previousUnreadMessageCount + newMessageCount.get();
 
         // If we have a message, set the notification to "<From>: <Subject>"
         StringBuilder messageNotice = new StringBuilder();
@@ -4207,12 +4213,11 @@ public class MessagingController implements Runnable {
         NotificationManager notifMgr =
                 (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
 
-        NotificationBuilder builder = NotificationBuilder.createInstance(context);
+        Notification.Builder builder = new Notification.Builder(context); 
         builder.setSmallIcon(R.drawable.stat_notify_email_generic);
         builder.setWhen(System.currentTimeMillis());
         builder.setTicker(messageNotice);
 
-        final int unreadCount = previousUnreadMessageCount + newMessageCount.get();
         if (account.isNotificationShowsUnreadCount() ||
                 // Honeycomb and newer don't show the number as overlay on the notification icon.
                 // However, the number will appear in the detailed notification view.
@@ -4237,6 +4242,41 @@ public class MessagingController implements Runnable {
         if (!account.isRingNotified()) {
             account.setRingNotified(true);
             ringAndVibrate = true;
+        }
+
+        if (isRunningJellybeanOrLater()) {
+            if (unreadCount > 1) {
+                Notification.InboxStyle digest = new Notification.InboxStyle(builder);
+
+                // digest.setBigContentTitle("Content Title");
+                builder.setSubText(account.getDescription() + ": " + account.getEmail());
+
+                for (NotificationInfoHolder nih : unreadMessages) {
+                    String digestLine = nih.sender + ": " + nih.subject;
+                    digest.addLine(digestLine);
+                }
+
+                builder.setContentText(null);
+            }
+
+            else {
+                Notification.BigTextStyle bigText = new Notification.BigTextStyle(builder);
+                try {
+                    String folderName = message.getFolder().getName();
+                    String uid = message.getUid(); 
+                    LocalFolder folder = account.getLocalStore().getFolder(folderName);
+                    folder.open(OpenMode.READ_ONLY);
+                    LocalMessage lMessage = (LocalMessage) folder.getMessage(uid);
+                    String preview = lMessage.getPreview();
+                    bigText.bigText(preview);
+                    builder.setContentTitle(messageNotice);
+                    builder.setSubText(account.getDescription() + ": " + account.getEmail());
+                    builder.setContentText(null);
+                } catch (MessagingException e) {
+                    Log.e(K9.LOG_TAG, "Couldn't get message preview");
+                }
+
+            }
         }
 
         NotificationSetting n = account.getNotificationSetting();
@@ -4271,6 +4311,39 @@ public class MessagingController implements Runnable {
      *          {@code true}, if ringtone/vibration are allowed. {@code false}, otherwise.
      */
     private void configureNotification(NotificationBuilder builder, String ringtone,
+            long[] vibrationPattern, Integer ledColor, int ledSpeed, boolean ringAndVibrate) {
+
+        // if it's quiet time, then we shouldn't be ringing, buzzing or flashing
+        if (K9.isQuietTime()) {
+            return;
+        }
+
+        if (ringAndVibrate) {
+            if (ringtone != null && !TextUtils.isEmpty(ringtone)) {
+                builder.setSound(Uri.parse(ringtone));
+            }
+
+            if (vibrationPattern != null) {
+                builder.setVibrate(vibrationPattern);
+            }
+        }
+
+        if (ledColor != null) {
+            int ledOnMS;
+            int ledOffMS;
+            if (ledSpeed == K9.NOTIFICATION_LED_BLINK_SLOW) {
+                ledOnMS = K9.NOTIFICATION_LED_ON_TIME;
+                ledOffMS = K9.NOTIFICATION_LED_OFF_TIME;
+            } else {
+                ledOnMS = K9.NOTIFICATION_LED_FAST_ON_TIME;
+                ledOffMS = K9.NOTIFICATION_LED_FAST_OFF_TIME;
+            }
+
+            builder.setLights(ledColor, ledOnMS, ledOffMS);
+        }
+    }
+
+    private void configureNotification(Notification.Builder builder, String ringtone,
             long[] vibrationPattern, Integer ledColor, int ledSpeed, boolean ringAndVibrate) {
 
         // if it's quiet time, then we shouldn't be ringing, buzzing or flashing
